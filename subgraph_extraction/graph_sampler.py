@@ -66,7 +66,7 @@ def sample_neg(adj_list, edges, num_neg_samples_per_link=1, max_size=1000000, co
     return pos_edges, neg_edges
 
 
-def links2subgraphs(A, graphs, params, max_label_value=None):
+def links2subgraphs(A, graphs, params, max_label_value=None): # A:adjacency matrix, graphs:train/val/test별 triplets과 max_size가 담긴 dict
     '''
     extract enclosing subgraphs, write map mode + named dbs
     '''
@@ -77,7 +77,7 @@ def links2subgraphs(A, graphs, params, max_label_value=None):
 
     BYTES_PER_DATUM = get_average_subgraph_size(100, list(graphs.values())[0]['pos'], A, params) * 1.5
     links_length = 0
-    for split_name, split in graphs.items():
+    for split_name, split in graphs.items(): 
         links_length += (len(split['pos']) + len(split['neg'])) * 2
     map_size = links_length * BYTES_PER_DATUM
 
@@ -189,7 +189,7 @@ def subgraph_extraction_labeling(ind, rel, A_list, h=1, enclosing_sub_graph=Fals
     # extract the h-hop enclosing subgraphs around link 'ind'
     A_incidence = incidence_matrix(A_list)
     A_incidence += A_incidence.T
-    ind = list(ind)
+    ind = list(ind) # ind: (node1, node2)
     ind[0], ind[1] = int(ind[0]), int(ind[1])
     ind = (ind[0], ind[1])
     root1_nei = get_neighbor_nodes(set([ind[0]]), A_incidence, h, max_nodes_per_hop)

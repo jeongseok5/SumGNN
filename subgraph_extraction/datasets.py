@@ -66,20 +66,22 @@ class SubgraphDataset(Dataset):
     def __init__(self, db_path, db_name_pos, db_name_neg, raw_data_paths, included_relations=None, add_traspose_rels=False, num_neg_samples_per_link=1, use_kge_embeddings=False, dataset='', kge_model='', file_name='', \
         ssp_graph = None,  relation2id= None, id2entity= None, id2relation= None, rel= None,  graph = None, morgan_feat = None):
 
-        self.main_env = lmdb.open(db_path, readonly=True, max_dbs=3, lock=False)
-        self.db_pos = self.main_env.open_db(db_name_pos.encode())
-        self.db_neg = self.main_env.open_db(db_name_neg.encode())
-        self.node_features, self.kge_entity2id = get_kge_embeddings(dataset, kge_model) if use_kge_embeddings else (None, None)
-        self.num_neg_samples_per_link = num_neg_samples_per_link
+        self.main_env = lmdb.open(db_path, readonly=True, max_dbs=3, lock=False) # open database environment
+        self.db_pos = self.main_env.open_db(db_name_pos.encode()) # input Bytestring database name, 실제 positive 데이터셋이 db_pos에 들어감
+        self.db_neg = self.main_env.open_db(db_name_neg.encode()) # .encode: encoding to utf-8
+        self.node_features, self.kge_entity2id = get_kge_embeddings(dataset, kge_model) if use_kge_embeddings else (None, None) 
+        # default-> False로 여기선 사용안함, id2entity.json도 없음
+        self.num_neg_samples_per_link = num_neg_samples_per_link # default -> 0
         self.file_name = file_name
-        triple_file = 'data/{}/relations_2hop.txt'.format(dataset)
-        self.entity_type = np.loadtxt('data/{}/entity.txt'.format(dataset))
+        triple_file = 'data/{}/relations_2hop.txt'.format(dataset) # id로 변환한 (drug, drug, relation) triplet
+        self.entity_type = np.loadtxt('data/{}/entity.txt'.format(dataset)) # entity 종류를 담은 ndarray 총 34124개의 값 
 
-        if not ssp_graph:
+        if not ssp_graph: # None
             if dataset == 'drugbank':
                 ssp_graph, triplets, entity2id, relation2id, id2entity, id2relation, rel = process_files_ddi(raw_data_paths, triple_file, included_relations)
+                # ssp_graph는 adj_mat
             else:
-                ssp_graph, triplets, entity2id, relation2id, id2entity, id2relation, rel, triplets_mr, polarity_mr = process_files_decagon(raw_data_paths, triple_file, included_relations)
+                ssp_graph, triplets, entity2id, relation2id, id2entity, id2relation, rel, triplets_mr, polarity_mr = process_files_decagon(raw_data_paths, triple_file, included_relations) # included_relations=None
 
             
             data_path =  'data/{}/relation2id.json'.format(dataset)
@@ -139,14 +141,15 @@ class SubgraphDataset(Dataset):
             with open(dataset_name, 'w') as f:
                 f.write(json.dumps(data, indent = 4))
         json_save(lst, db_name_pos+'3.json')
-        self.__getitem__(0)
+        # self.__getitem__(0)
+        
 
     def __getitem__(self, index):
         with self.main_env.begin(db=self.db_pos) as txn:
-            str_id = '{:08}'.format(index).encode('ascii')
+            str_id = '{:08}'.format(index).encode('ascii') # 8digit padding이 있는 숫자를 ascii로 인코딩
             nodes_pos, r_label_pos, g_label_pos, n_labels_pos = deserialize(txn.get(str_id)).values()
-            #print(nodes_pos, r_label_pos, g_label_pos, n_labels_pos)
-            #print(nodes_pos, r_label_pos, g_label_pos, n_labels_pos)
+            # print(f'nodes_pos : {nodes_pos}, r_label_pos : {r_label_pos}, g_label_pos : {g_label_pos}, n_labels_pos : {n_labels_pos}')
+            # print(nodes_pos, r_label_pos, g_label_pos, n_labels_pos)
             subgraph_pos = self._prepare_subgraphs(nodes_pos, r_label_pos, n_labels_pos)
 
         return subgraph_pos, g_label_pos, r_label_pos
@@ -156,13 +159,15 @@ class SubgraphDataset(Dataset):
 
     def _prepare_subgraphs(self, nodes, r_label, n_labels):
 
-        subgraph = dgl.DGLGraph(self.graph.subgraph(nodes))
-        #print(subgraph, subgraph.nodes(), subgraph.ndata, subgraph.edges(), subgraph.edata)
+        subgraph = dgl.DGLGraph(self.graph.subgraph(nodes)) # nodes 객체를 넣으면 노드 갯수를 세 subgraph
+        # print(subgraph, subgraph.nodes(), subgraph.ndata, subgraph.edges(), subgraph.edata)
         subgraph.edata['type'] = self.graph.edata['type'][self.graph.subgraph(nodes).parent_eid]
-                
         subgraph.ndata['idx'] = torch.LongTensor(np.array(nodes))
         subgraph.ndata['ntype'] = torch.LongTensor(self.entity_type[nodes])
         subgraph.ndata['mask'] = torch.LongTensor(np.where(self.entity_type[nodes]==1, 1, 0))
+        print("print subgraph:", subgraph,"print subgraph.nodes():", subgraph.nodes(),"print subgraph.ndata:", subgraph.ndata,"print subgraph.edges:", subgraph.edges(),"print subgraph.edata:", subgraph.edata) # => 출력해보기
+        # print("# of nodes in subgraph:", subgraph.number_of_nodes())
+        # print("# of edges in subgraph:", subgraph.number_of_edges())
         try:
             edges_btw_roots = subgraph.edge_id(0, 1)
             rel_link = np.nonzero(subgraph.edata['type'][edges_btw_roots] == r_label)
