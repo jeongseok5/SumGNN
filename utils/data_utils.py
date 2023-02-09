@@ -78,9 +78,9 @@ def process_files_ddi(files, triple_file, saved_relation2id=None, keeptrainone =
         file_data = np.loadtxt(file_path)
         for triplet in file_data:
             #print(triplet)
-            triplet[0], triplet[1], triplet[2] = int(triplet[0]), int(triplet[1]), int(triplet[2])
+            triplet[0], triplet[1], triplet[2] = int(triplet[0]), int(triplet[1]), int(triplet[2]) # ent, ent, rel
             if triplet[0] not in entity2id:
-                entity2id[triplet[0]] = triplet[0]
+                entity2id[triplet[0]] = triplet[0] # 같은 값을 k,v pair로 entity2id에 넣는다.
                 #ent += 1
             if triplet[1] not in entity2id:
                 entity2id[triplet[1]] = triplet[1]
@@ -99,9 +99,9 @@ def process_files_ddi(files, triple_file, saved_relation2id=None, keeptrainone =
                 data.append([entity2id[triplet[0]], entity2id[triplet[1]], relation2id[triplet[2]]])
 
         triplets[file_type] = np.array(data)
-    #print(rel)
+    # print(rel)
     triplet_kg = np.loadtxt(triple_file)
-    print(np.max(triplet_kg[:, -1]))
+    # print(np.max(triplet_kg[:, -1]))
     for (h, t, r) in triplet_kg:
         h, t, r = int(h), int(t), int(r)
         if h not in entity2id:
@@ -116,11 +116,11 @@ def process_files_ddi(files, triple_file, saved_relation2id=None, keeptrainone =
     id2relation = {v: k for k, v in relation2id.items()}
     #print(relation2id, rel)
 
-    # Construct the list of adjacency matrix each corresponding to eeach relation. Note that this is constructed only from the train data.
+    # Construct the list of adjacency matrix each corresponding to each relation. Note that this is constructed only from the train data.
     adj_list = []
     #print(kg_triple)
     #for i in range(len(relation2id)):
-    for i in range(rel):
+    for i in range(rel): # relation마다 해당 relation이 있는 id
         idx = np.argwhere(triplets['train'][:, 2] == i)
         adj_list.append(csc_matrix((np.ones(len(idx), dtype=np.uint8), (triplets['train'][:, 0][idx].squeeze(1), triplets['train'][:, 1][idx].squeeze(1))), shape=(len(entity2id), len(entity2id))))
     for i in range(rel, len(relation2id)):
@@ -216,7 +216,7 @@ def process_files_decagon(files, triple_file, saved_relation2id=None, keeptraino
     id2entity = {v: k for k, v in entity2id.items()}
     id2relation = {v: k for k, v in relation2id.items()}
 
-    # Construct the list of adjacency matrix each corresponding to eeach relation. Note that this is constructed only from the train data.
+    # Construct the list of adjacency matrix each corresponding to each relation. Note that this is constructed only from the train data.
     adj_list = []
     #print(kg_triple)
     #for i in range(len(relation2id)):
