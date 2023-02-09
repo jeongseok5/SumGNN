@@ -24,77 +24,110 @@ def main(params):
 
     if not os.path.isdir(params.db_path):
         generate_subgraph_datasets(params)
-
+        
+    print("\nget train subgraph\n")
     train = SubgraphDataset(params.db_path, 'train_pos', 'train_neg', params.file_paths,
                             add_traspose_rels=params.add_traspose_rels,
                             num_neg_samples_per_link=params.num_neg_samples_per_link,
                             use_kge_embeddings=params.use_kge_embeddings, dataset=params.dataset,
                             kge_model=params.kge_model, file_name=params.train_file)
+    
+    ###
+    print('# of train subgraph',len(train)) # 1-hop 기준 134641
+    no_neighbor_subgraph = 0
+    lst_n_nodes = np.array([])
+    for i in range(len(train)):
+        subgraph = train[i][0]
+        n_nodes = subgraph.number_of_nodes()
+        # print('print n_nodes',n_nodes)
+        lst_n_nodes = np.append(lst_n_nodes, [n_nodes])
+        if n_nodes <= 2:
+            no_neighbor_subgraph += 1
+
+    print("이웃 노드가 없는 서브그래프 개수:",no_neighbor_subgraph)
+    print("lst_n_nodes:", lst_n_nodes)
+    print("==서브그래프 내 노드 statistics 출력==")
+    print("max:", np.max(lst_n_nodes))
+    print("median:",np.median(lst_n_nodes))
+    print("mean:",np.mean(lst_n_nodes))
+    print("std:",np.std(lst_n_nodes))
+    
+    ###
+    
     #assert 0
-    valid = SubgraphDataset(params.db_path, 'valid_pos', 'valid_neg', params.file_paths,
-                            add_traspose_rels=params.add_traspose_rels,
-                            num_neg_samples_per_link=params.num_neg_samples_per_link,
-                            use_kge_embeddings=params.use_kge_embeddings, dataset=params.dataset,
-                            kge_model=params.kge_model, file_name=params.valid_file,
-                            ssp_graph = train.ssp_graph, 
-                            id2entity= train.id2entity, id2relation= train.id2relation, rel= train.num_rels,  graph = train.graph)
-    test = SubgraphDataset(params.db_path, 'test_pos', 'test_neg', params.file_paths,
-                            add_traspose_rels=params.add_traspose_rels,
-                            num_neg_samples_per_link=params.num_neg_samples_per_link,
-                            use_kge_embeddings=params.use_kge_embeddings, dataset=params.dataset,
-                            kge_model=params.kge_model, file_name=params.valid_file,
-                            ssp_graph = train.ssp_graph,  
-                            id2entity= train.id2entity, id2relation= train.id2relation, rel= train.num_rels,  graph = train.graph)
-    params.num_rels = train.num_rels
-    params.aug_num_rels = train.aug_num_rels
-    params.inp_dim = train.n_feat_dim
-    params.train_rels = 200 if params.dataset == 'BioSNAP' else params.num_rels
-    params.num_nodes = 35000
-
-    # Log the max label value to save it in the model. This will be used to cap the labels generated on test set.
-    params.max_label_value = train.max_n_label
-    logging.info(f"Device: {params.device}")
-    logging.info(f"Input dim : {params.inp_dim}, # Relations : {params.num_rels}, # Augmented relations : {params.aug_num_rels}")
-
-    graph_classifier = initialize_model(params, dgl_model, params.load_model)
-    if params.dataset == 'drugbank':
-        if params.feat == 'morgan':
-            import pickle 
-            with open('data/{}/DB_molecular_feats.pkl'.format(params.dataset), 'rb') as f:
-                x = pickle.load(f, encoding='utf-8')
-            mfeat =  []
-            for y in x['Morgan_Features']:
-                mfeat.append(y)
-            params.feat_dim = 1024
-        elif  params.feat == 'pca':
-            mfeat = np.loadtxt('data/{}/PCA.txt'.format(params.dataset))
-            params.feat_dim = 200
-        elif  params.feat == 'pretrained':
-            mfeat = np.loadtxt('data/{}/pretrained.txt'.format(params.dataset))
-            params.feat_dim = 200
-    elif params.dataset == 'BioSNAP':
-        mfeat = []
-        rfeat = []
-        import pickle 
-        with open('data/{}/id2drug_feat.pkl'.format(params.dataset), 'rb') as f:
-            x = pickle.load(f, encoding='utf-8') 
-        for z in x:
-            y = x[z]['Morgan']
-            mfeat.append(y)
-            y = x[z]['rdkit2d']
-            rfeat.append(y)
-            params.feat_dim = 1024
-
-    graph_classifier.drug_feat(torch.FloatTensor(np.array(mfeat)).to(params.device))
     
-    valid_evaluator = Evaluator(params, graph_classifier, valid) if params.dataset == 'drugbank' else Evaluator_ddi2(params, graph_classifier, valid)
-    test_evaluator = Evaluator(params, graph_classifier, test) if params.dataset == 'drugbank' else Evaluator_ddi2(params, graph_classifier, test)
-    train_evaluator = Evaluator(params, graph_classifier, train) if params.dataset == 'drugbank' else Evaluator_ddi2(params, graph_classifier, valid)
-    
-    trainer = Trainer(params, graph_classifier, train, train_evaluator, valid_evaluator,test_evaluator)
+    # line44-107 주석처리
+    # valid = SubgraphDataset(params.db_path, 'valid_pos', 'valid_neg', params.file_paths,
+    #                         add_traspose_rels=params.add_traspose_rels,
+    #                         num_neg_samples_per_link=params.num_neg_samples_per_link,
+    #                         use_kge_embeddings=params.use_kge_embeddings, dataset=params.dataset,
+    #                         kge_model=params.kge_model, file_name=params.valid_file,
+    #                         ssp_graph = train.ssp_graph, 
+    #                         id2entity= train.id2entity, id2relation= train.id2relation, rel= train.num_rels,  graph = train.graph)
+    # test = SubgraphDataset(params.db_path, 'test_pos', 'test_neg', params.file_paths,
+    #                         add_traspose_rels=params.add_traspose_rels,
+    #                         num_neg_samples_per_link=params.num_neg_samples_per_link,
+    #                         use_kge_embeddings=params.use_kge_embeddings, dataset=params.dataset,
+    #                         kge_model=params.kge_model, file_name=params.valid_file,
+    #                         ssp_graph = train.ssp_graph,  
+    #                         id2entity= train.id2entity, id2relation= train.id2relation, rel= train.num_rels,  graph = train.graph)
+    # params.num_rels = train.num_rels # 서브그래프데이터셋의 relation개수, unique하게 뽑아내면 링크 수?
+    # params.aug_num_rels = train.aug_num_rels
+    # params.inp_dim = train.n_feat_dim
+    # params.train_rels = 200 if params.dataset == 'BioSNAP' else params.num_rels
+    # params.num_nodes = 35000
 
-    logging.info('Starting training with full batch...')
-    trainer.train()
+    # # Log the max label value to save it in the model. This will be used to cap the labels generated on test set.
+    # params.max_label_value = train.max_n_label
+    # logging.info(f"Device: {params.device}")
+    # logging.info(f"Input dim : {params.inp_dim}, # Relations : {params.num_rels}, # Augmented relations : {params.aug_num_rels}")
+
+    # graph_classifier = initialize_model(params, dgl_model, params.load_model)
+    # if params.dataset == 'drugbank':
+    #     if params.feat == 'morgan':
+    #         import pickle 
+    #         with open('data/{}/DB_molecular_feats.pkl'.format(params.dataset), 'rb') as f:
+    #             x = pickle.load(f, encoding='utf-8')
+    #         mfeat =  []
+    #         for y in x['Morgan_Features']:
+    #             mfeat.append(y)
+    #         params.feat_dim = 1024
+    #     elif  params.feat == 'pca':
+    #         mfeat = np.loadtxt('data/{}/PCA.txt'.format(params.dataset))
+    #         params.feat_dim = 200
+    #     elif  params.feat == 'pretrained':
+    #         mfeat = np.loadtxt('data/{}/pretrained.txt'.format(params.dataset))
+    #         params.feat_dim = 200
+    # elif params.dataset == 'BioSNAP':
+    #     mfeat = []
+    #     rfeat = []
+    #     import pickle 
+    #     with open('data/{}/id2drug_feat.pkl'.format(params.dataset), 'rb') as f:
+    #         x = pickle.load(f, encoding='utf-8') 
+    #     for z in x:
+    #         y = x[z]['Morgan']
+    #         mfeat.append(y)
+    #         y = x[z]['rdkit2d']
+    #         rfeat.append(y)
+    #         params.feat_dim = 1024
+
+    # graph_classifier.drug_feat(torch.FloatTensor(np.array(mfeat)).to(params.device))
+    
+    # valid_evaluator = Evaluator(params, graph_classifier, valid) if params.dataset == 'drugbank' else Evaluator_ddi2(params, graph_classifier, valid)
+    # test_evaluator = Evaluator(params, graph_classifier, test) if params.dataset == 'drugbank' else Evaluator_ddi2(params, graph_classifier, test)
+    # train_evaluator = Evaluator(params, graph_classifier, train) if params.dataset == 'drugbank' else Evaluator_ddi2(params, graph_classifier, valid)
+    
+    # trainer = Trainer(params, graph_classifier, train, train_evaluator, valid_evaluator,test_evaluator)
+
+    # logging.info('Starting training with full batch...')
+    # trainer.train()
+    
+    # print(train)
+    # print(len(train))
+    # for i in range(3):
+    #     train[i]
+    
+    
 
 
 
@@ -215,7 +248,11 @@ if __name__ == '__main__':
         params.device = torch.device('cuda:%d' % params.gpu)
     else:
         params.device = torch.device('cpu')
-
+    print(params.device)
+    
+    # Set the GPU
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(params.gpu)
+    
     params.collate_fn = collate_dgl
     params.move_batch_to_device = move_batch_to_device_dgl if params.dataset == 'drugbank' else move_batch_to_device_dgl_ddi2
 
